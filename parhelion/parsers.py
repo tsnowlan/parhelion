@@ -1,12 +1,18 @@
 from __future__ import print_function
 
+from collections import Counter
+import datetime
 import io
 import json
 import logging
+import re
 import sys
 import xml.etree.ElementTree as ET
 
 from parhelion.models import XML_Model, XML_Element, XML_Attribute
+
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
 
 class DataParser(object):
     current_fh = None
@@ -67,7 +73,6 @@ class XMLParser(DataParser):
 
         self.parse_element(root)
 
-        import pdb; pdb.set_trace()
         return self
 
     def parse_element(self, elt):
@@ -76,7 +81,7 @@ class XMLParser(DataParser):
             self.curr_model.observations['elements'][elt.tag] = []
         self.curr_model.observations['elements'][elt.tag].append({
             "children": [c.tag for c in elt.getchildren()],
-            "attribs": elt.attrib,
+            "attribs": elt.attrib.keys(),
             "value": elt.text.strip() if isinstance(elt.text, str) else elt.text
         })
 
@@ -96,6 +101,44 @@ class XMLParser(DataParser):
         for subelt in elt.getchildren():
             elt_model.children.add(subelt.tag)
             self.parse_element(subelt)
+
+    def analyze(self):
+        for attrib in self.curr_model.attribs:
+            attr_model = self.curr_model.attribs[attrib]
+            for obs in self.curr_model.observations['attribs'][attrib]:
+                if attr_model.data_type == 'str':
+                    obs_val = len(obs)
+                elif attr_model.data_type == 'int':
+                    obs_val = int(obs)
+                elif attr_model.data_type == 'float':
+                    obs_val = float(obs)
+                else:
+                    logger.warn("Unknown data_type encoutered on attrib '{}': {}".format(attrib, attr_model.data_type))
+                    break
+
+                if attr_model.min is None or obs_val < attr_model.min:
+                    attr_model.min = obs_val
+
+                if attr_model.max is None or obs_val > attr_model.max:
+                    attr_model.max = obs_val
+
+
+        re_isfloat = re.compile('^-?\d*\.\d+$')
+        re_isbool = re.compile('^true|false$', re.IGNORECASE)
+        for elt in self.curr_model.elements:
+            elt_model = self.curr_model.elements[elt]
+            for obs in self.curr_model.observations['elements'][elt]:
+                if obs['value'] is None or obs['value'] == "":
+                    elt_model.required_val = False
+                    elt_model.types.add('None')
+                elif obs['value'].isnumeric():
+                    elt_model.types.add('int')
+                elif re.search(re_isfloat, obs['value']):
+                    elt_model.types.add('float')
+                elif re.search(re_isbool, obs['value']):
+                    elt_model.types.add('bool')
+                else:
+                    elt_model.types.add('str')
 
     def dump(self, to_file=None, to_fh=None):
         if to_file:

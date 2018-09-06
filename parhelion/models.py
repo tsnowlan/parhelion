@@ -1,9 +1,10 @@
-import re
 
 class XML_Element(object):
     tag = None
-    children = set() # names of other XML_Element.tag values
-    attribs = set()  # names of
+    children = set() # tags of child elements
+    attribs = set()  # attribute keys observed in the element
+    types = set()
+    required_val = True
 
     def __init__(self, **kwargs):
         for k in kwargs:
@@ -29,8 +30,8 @@ class XML_Element(object):
 class XML_Attribute(object):
     name = None
     _dt = None
-    min_value = None
-    max_value = None
+    min = None
+    max = None
     re_pattern = None
 
     def __init__(self, name, **kwargs):
@@ -48,11 +49,11 @@ class XML_Attribute(object):
         return self._dt
 
     def __repr__(self):
-        return "<XML_Attribute name={} _dt={} min_value={} max_value={}>".format(
+        return "<XML_Attribute name={} data_type={} min={} max={}>".format(
             self.name,
-            self._dt,
-            self.min_value,
-            self.max_value
+            self.data_type,
+            self.min,
+            self.max
         )
 
     data_type = property(get_data_type, set_data_type)
