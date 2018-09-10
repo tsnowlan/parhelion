@@ -9,7 +9,7 @@ import re
 import sys
 import xml.etree.ElementTree as ET
 
-from parhelion.models import XML_Model, XML_Element, XML_Attribute
+from parhelion.models import XMLModel, XMLElement, XMLAttribute
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -68,7 +68,7 @@ class XMLParser(DataParser):
         root = etree.getroot()
 
         if self.models.get(root.tag) is None:
-            self.models[root.tag] = XML_Model(name=root.tag, root_element=root.tag)
+            self.models[root.tag] = XMLModel(name=root.tag, root_element=root.tag)
         self.curr_model = self.models[root.tag]
 
         self.parse_element(root)
@@ -140,13 +140,12 @@ class XMLParser(DataParser):
                 else:
                     elt_model.types.add('str')
 
-    def dump(self, to_file=None, to_fh=None):
-        if to_file:
-            to_fh = io.open(to_file, 'w')
-        elif to_fh is None:
-            to_fh = sys.stdout
+        return self
 
-        print(json.dumps(self.models, indent=4, sort_keys=True), file=to_fh)
+    def dump(self):
+        for model in self.models.values():
+            print("Writing model file for {}".format(model.name))
+            model.write()
 
 
 class JSONParser(DataParser):
