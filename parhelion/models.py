@@ -1,12 +1,16 @@
+import re
 
 class XML_Element(object):
     tag = None
-    children = set() # tags of child elements
-    attribs = set()  # attribute keys observed in the element
-    types = set()
+    children = None
+    attribs = None
+    types = None
     required_val = True
 
     def __init__(self, **kwargs):
+        self.children = set() # tags of child elements
+        self.attribs = set()  # attribute keys observed in the element
+        self.types = set()
         for k in kwargs:
             if hasattr(self, k):
                 setattr(self, k, kwargs[k])
