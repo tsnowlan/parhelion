@@ -11,7 +11,7 @@ from parhelion.utils import abbrev, ParhelionJSONEncoder
 #                          Globals                         #
 ############################################################
 
-MODEL_SUFFIX = '.parmodel.json'
+MODEL_SUFFIX = 'parmodel.json'
 
 
 ############################################################
@@ -22,6 +22,7 @@ MODEL_SUFFIX = '.parmodel.json'
 class GenericModel(object):
     name = None
     observations = None
+    version = None
 
     def write(self):
         raise NotImplemented()
@@ -38,6 +39,10 @@ class GenericModel(object):
             # spaces to underscores
             cleaned_name = cleaned_name.replace(' ', '_')
         return cleaned_name
+
+    def incr_version(self):
+        self.version += 1
+        return self
 
 
 ############################################################
@@ -60,7 +65,7 @@ class XMLModel(GenericModel):
         }
         self.elements = {}
         self.attribs = {}
-        self.filename = None
+        self.version = 1
 
         for k in kwargs.keys():
             if hasattr(self, k):
@@ -78,31 +83,26 @@ class XMLModel(GenericModel):
             cleaned_name = cleaned_name.replace(' ', '_')
         return cleaned_name
 
+    @property
+    def filename(self):
+        return "{}.v{}.{}".format(self.clean_name, self.version, MODEL_SUFFIX)
+
     @classmethod
     def load(cls, filename):
         with open(filename, 'rt') as input_fh:
             input_obj = json.load(input_fh)
-        input_obj['filename'] = filename
-        return cls(input_obj['name'], input_obj['root_element'], **input_obj)
+        has_version = re.search('\.v(\d+)\.{}'.format(MODEL_SUFFIX), filename)
+        if has_version:
+            input_obj['version'] = int(has_version.groups()[0])
+        return cls(name=input_obj['name'], root_element=input_obj['root_element'], **input_obj)
 
-    def write(self, filename=None, include_observations=False):
-        if filename is not None:
-            fname = filename
-        elif self.filename is not None:
-            fname = self.filename
-        else:
-            fname = self.clean_name + MODEL_SUFFIX
-
-        if not fname.endswith(MODEL_SUFFIX):
-            fname += MODEL_SUFFIX
-        self.filename = fname
-
+    def write(self, include_observations=False):
         if include_observations:
             output_obj = vars(self)
         else:
             output_obj = {k: getattr(self, k) for k in vars(self) if k != "observations"}
 
-        with io.open(fname, 'wt') as output_fh:
+        with io.open(self.filename, 'wt') as output_fh:
             json.dump(
                 output_obj,
                 output_fh,

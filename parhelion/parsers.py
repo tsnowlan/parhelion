@@ -144,7 +144,7 @@ class XMLParser(DataParser):
 
     def dump(self):
         for model in self.models.values():
-            print("Writing model file for {}".format(model.name))
+            print("Writing model file for {} to {}".format(model.name, model.filename))
             model.write()
 
 
