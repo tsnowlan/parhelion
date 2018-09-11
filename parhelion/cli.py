@@ -44,10 +44,8 @@ def main():
             new_model = MODELS[args.type].load(mfile)
             parser.models[new_model.name] = new_model
 
-    if args.create_models:
+    if args.create_models or args.update_models:
         parser.load().analyze().dump()
-    elif args.update_models:
-        parser.load().analyze().incr_version().dump()
 
 
 def data_type(type_str):

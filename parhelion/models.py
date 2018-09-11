@@ -3,6 +3,7 @@ from __future__ import print_function, absolute_import
 import io
 import json
 import re
+import time
 
 from parhelion.utils import abbrev, ParhelionJSONEncoder
 
@@ -23,6 +24,7 @@ class GenericModel(object):
     name = None
     observations = None
     version = None
+    last_written = None
 
     def write(self):
         raise NotImplemented()
@@ -60,12 +62,17 @@ class XMLModel(GenericModel):
         self.name = name
         self.observations = {
             "elements": {},
-            "relationships": {},
             "attribs": {}
         }
         self.elements = {}
         self.attribs = {}
         self.version = 1
+
+        if 'attribs' in kwargs and kwargs['attribs']:
+            self.load_attribs(kwargs.pop('attribs'))
+
+        if 'elements' in kwargs and kwargs['elements']:
+            self.load_elements(kwargs.pop('elements'))
 
         for k in kwargs.keys():
             if hasattr(self, k):
@@ -94,9 +101,13 @@ class XMLModel(GenericModel):
         has_version = re.search('\.v(\d+)\.{}'.format(MODEL_SUFFIX), filename)
         if has_version:
             input_obj['version'] = int(has_version.groups()[0])
-        return cls(name=input_obj['name'], root_element=input_obj['root_element'], **input_obj)
+        return cls(**input_obj)
 
     def write(self, include_observations=False):
+        if self.last_written is not None:
+            self.incr_version()
+        self.last_written = time.time()
+
         if include_observations:
             output_obj = vars(self)
         else:
@@ -110,6 +121,14 @@ class XMLModel(GenericModel):
                 indent=4,
                 cls=ParhelionJSONEncoder
             )
+
+    def load_elements(self, elt_dict):
+        for elt_name in elt_dict.keys():
+            self.elements[elt_name] = XMLElement(**elt_dict[elt_name])
+
+    def load_attribs(self, attr_dict):
+        for attr_name in attr_dict.keys():
+            self.attribs[attr_name] = XMLAttribute(**attr_dict[attr_name])
 
     def get_element(self, elt):
         try:
@@ -139,7 +158,10 @@ class XMLElement(object):
         self.types = set()
         for k in kwargs:
             if hasattr(self, k):
-                setattr(self, k, kwargs[k])
+                if isinstance(getattr(self, k), set):
+                    setattr(self, k, set(kwargs[k]))
+                else:
+                    setattr(self, k, kwargs[k])
 
     @property
     def has_children(self):

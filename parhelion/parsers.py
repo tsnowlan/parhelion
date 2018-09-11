@@ -144,8 +144,9 @@ class XMLParser(DataParser):
 
     def dump(self):
         for model in self.models.values():
-            print("Writing model file for {} to {}".format(model.name, model.filename))
             model.write()
+            adj = 'updated' if model.version > 1 else 'new'
+            print("Wrote {} model file for {} to {}".format(adj, model.name, model.filename))
 
 
 class JSONParser(DataParser):
